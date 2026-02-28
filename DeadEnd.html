@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Judgment day for the familiar world</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b0f14;
+      color: #e9eef6;
+    }
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 18px 0;
+      font-size: clamp(28px, 4vw, 56px);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    #countdown {
+      font-size: clamp(22px, 3vw, 44px);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.3px;
+      line-height: 1.25;
+      white-space: pre-line;
+    }
+    .done {
+      color: #8cffc1;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <h1>Judgment day for the familiar world</h1>
+      <div id="countdown" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script>
+    // Целевая дата: 29 сентября 2028, 00:00:00 по локальному времени пользователя.
+    // Если нужно фиксировать именно UTC — см. комментарий ниже.
+    const target = new Date(2028, 8, 29, 0, 0, 0); // month: 0=Jan ... 8=Sep
+
+    // Для UTC-варианта используйте:
+    // const target = new Date(Date.UTC(2028, 8, 29, 0, 0, 0));
+
+    const el = document.getElementById("countdown");
+
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function addMonths(date, months) {
+      const d = new Date(date);
+      const day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + months);
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, lastDay));
+      return d;
+    }
+
+    function diffYMDHMS(from, to) {
+      // Возвращает разницу в годах/месяцах/днях/часах/минутах/секундах
+      // через "календарный" расчет, чтобы месяцы/годы были корректны.
+      if (to <= from) {
+        return { years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0, done: true };
+      }
+
+      let cursor = new Date(from);
+
+      // Years
+      let years = to.getFullYear() - cursor.getFullYear();
+      const sameMonth = to.getMonth() - cursor.getMonth();
+      const sameDay = to.getDate() - cursor.getDate();
+
+      // Предварительная оценка лет, потом корректировка, чтобы cursor + years <= to
+      let tentative = new Date(cursor);
+      tentative.setFullYear(tentative.getFullYear() + years);
+
+      if (tentative > to) years--;
+
+      cursor.setFullYear(cursor.getFullYear() + years);
+
+      // Months
+      let months = (to.getFullYear() - cursor.getFullYear()) * 12 + (to.getMonth() - cursor.getMonth());
+      let cursorPlusMonths = addMonths(cursor, months);
+      if (cursorPlusMonths > to) {
+        months--;
+        cursorPlusMonths = addMonths(cursor, months);
+      }
+      cursor = cursorPlusMonths;
+
+      // Now compute the rest in ms (days/hours/minutes/seconds)
+      let ms = to - cursor;
+
+      const sec = 1000;
+      const min = 60 * sec;
+      const hour = 60 * min;
+      const day = 24 * hour;
+
+      const days = Math.floor(ms / day); ms -= days * day;
+      const hours = Math.floor(ms / hour); ms -= hours * hour;
+      const minutes = Math.floor(ms / min); ms -= minutes * min;
+      const seconds = Math.floor(ms / sec);
+
+      return { years, months, days, hours, minutes, seconds, done: false };
+    }
+
+    function render() {
+      const now = new Date();
+      const d = diffYMDHMS(now, target);
+
+      if (d.done) {
+        el.classList.add("done");
+        el.textContent = "С тридцатилетием меня!";
+        return;
+      }
+
+      el.classList.remove("done");
+
+      // Требовались: годы, месяцы, дни, минуты, секунды.
+      // Я добавил часы тоже (между днями и минутами), чтобы отсчет выглядел естественнее.
+      // Если строго без часов — скажи, уберу.
+      el.textContent =
+        `${d.years} y. ${d.months} m. ${d.days} d.\n` +
+        `${pad2(d.hours)}:${pad2(d.minutes)}:${pad2(d.seconds)}`;
+    }
+
+    render();
+    setInterval(render, 250); // чаще 1s, чтобы секунда не "залипала" из-за дрейфа таймера
+  </script>
+</body>
+</html>
